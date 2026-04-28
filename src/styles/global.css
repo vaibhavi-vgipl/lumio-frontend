@@ -1,0 +1,41 @@
+/* src/styles/global.css */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --font: 'DM Sans', sans-serif;
+  --font-display: 'DM Serif Display', serif;
+  --ink: #0F1117;
+  --ink-soft: #1C2030;
+  --gold: #D4A843;
+  --gold-dim: #8a6a22;
+  --gold-light: #F7EDD6;
+  --gold-pale: #FDFAF3;
+  --surface: #F4F3EF;
+  --surface-2: #ECEAE4;
+  --white: #ffffff;
+  --border: rgba(0,0,0,0.07);
+  --border-strong: rgba(0,0,0,0.13);
+  --text-muted: #6B6860;
+  --text-sub: #9E9B93;
+  --positive: #1E6B45;
+  --positive-bg: #E8F5EE;
+  --negative: #8B2020;
+  --negative-bg: #FAECEC;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.14);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.2);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--surface);
+  height: 100vh;
+  overflow: hidden;
+}

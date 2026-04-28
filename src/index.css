@@ -1,0 +1,29 @@
+/* src/styles/global.css */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --font: 'Segoe UI', sans-serif;
+  --ink: #1A1A2E;
+  --gold: #C8973A;
+  --gold-light: #F5E8CC;
+  --surface: #F7F6F2;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --text-muted: #7A7870;
+  --text-sub: #A8A59E;
+  --positive: #2A7A50;
+  --positive-bg: #EAF4EE;
+  --negative: #9B2C2C;
+  --negative-bg: #FAEAEA;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--surface);
+  height: 100vh;
+  overflow: hidden;
+}
