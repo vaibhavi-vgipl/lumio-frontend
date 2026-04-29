@@ -1,15 +1,47 @@
 // src/components/ChatBot/FileUpload.jsx
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import './FileUpload.css'
 
 export default function FileUpload({ onComplete }) {
-  const [dragging, setDragging]   = useState(false)
-  const [file, setFile]           = useState(null)
-  const [fileName, setFileName]   = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [uploaded, setUploaded]   = useState(false)
-  const inputRef                  = useRef(null)
-  const sizerRef                  = useRef(null)
+  const [dragging,   setDragging]   = useState(false)
+  const [file,       setFile]       = useState(null)
+  const [fileName,   setFileName]   = useState('')
+  const [uploading,  setUploading]  = useState(false)
+  const [uploaded,   setUploaded]   = useState(false)
+  const sizerRef = useRef(null)
+  const inputRef = useRef(null)
+
+useEffect(() => {
+  const isTauri = window.__TAURI__ !== undefined
+  if (!isTauri) return
+
+  const unlisteners = []
+
+  import('@tauri-apps/api/event').then(({ listen }) => {
+
+    listen('tauri://drag-drop', (event) => {
+      setDragging(false)
+      const paths = event.payload?.paths
+      if (paths && paths.length > 0) {
+        const path = paths[0]
+        const fakeName = path.split('\\').pop().split('/').pop()
+        const fakeFile = { name: fakeName, size: 0, tauriPath: path }
+        handleFile(fakeFile)
+      }
+    }).then(fn => unlisteners.push(fn))
+
+    listen('tauri://drag-enter', () => {
+      setDragging(true)
+    }).then(fn => unlisteners.push(fn))
+
+    listen('tauri://drag-leave', () => {
+      setDragging(false)
+    }).then(fn => unlisteners.push(fn))
+
+  })
+
+  return () => unlisteners.forEach(fn => fn())
+}, [])
 
   function handleFile(f) {
     if (!f) return
@@ -50,15 +82,12 @@ export default function FileUpload({ onComplete }) {
 
   function handleNameChange(e) {
     setFileName(e.target.value)
-    if (sizerRef.current && inputRef.current) {
-      // sync width after state update
-      setTimeout(() => {
-        if (sizerRef.current && inputRef.current) {
-          inputRef.current.style.width =
-            Math.max(40, sizerRef.current.offsetWidth + 4) + 'px'
-        }
-      }, 0)
-    }
+    setTimeout(() => {
+      if (sizerRef.current && inputRef.current) {
+        inputRef.current.style.width =
+          Math.max(40, sizerRef.current.offsetWidth + 4) + 'px'
+      }
+    }, 0)
   }
 
   function handleContinue() {
@@ -71,8 +100,6 @@ export default function FileUpload({ onComplete }) {
 
   return (
     <div className="fu-root">
-
-      {/* Drop zone */}
       <div
         className={`fu-dropzone ${dragging ? 'dragging' : ''} ${uploaded ? 'uploaded' : ''}`}
         onDrop={handleDrop}
@@ -101,15 +128,14 @@ export default function FileUpload({ onComplete }) {
                   strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
-            <div className="fu-idle-text">
-              Drop your report file here
-            </div>
-            <div className="fu-idle-sub">
-              .xlsx · .csv · .pdf supported
-            </div>
+            <div className="fu-idle-text">Drop your report file here</div>
+            <div className="fu-idle-sub">.xlsx · .csv · .pdf supported</div>
             <button
               className="fu-browse-btn"
-              onClick={e => { e.stopPropagation(); document.getElementById('fu-file-input').click() }}
+              onClick={e => {
+                e.stopPropagation()
+                document.getElementById('fu-file-input').click()
+              }}
             >
               Browse file
             </button>
@@ -139,7 +165,7 @@ export default function FileUpload({ onComplete }) {
             </div>
             <div className="fu-done-name">{file?.name}</div>
             <div className="fu-done-size">
-              {file ? (file.size / 1024).toFixed(1) + ' KB' : ''}
+              {file?.size ? (file.size / 1024).toFixed(1) + ' KB' : 'Tauri file'}
             </div>
             <button
               className="fu-reupload"
@@ -156,18 +182,13 @@ export default function FileUpload({ onComplete }) {
         )}
       </div>
 
-      {/* File name editor */}
       {uploaded && (
         <div className="fu-name-row">
           <span className="fu-name-label">File name</span>
           <div className="fu-name-input-wrap">
             <span className="fu-arrow">←</span>
             <div style={{ position: 'relative', display: 'inline-flex' }}>
-              <span
-                ref={sizerRef}
-                className="fu-name-sizer"
-                aria-hidden="true"
-              >
+              <span ref={sizerRef} className="fu-name-sizer" aria-hidden="true">
                 {fileName || ' '}
               </span>
               <input
@@ -186,7 +207,6 @@ export default function FileUpload({ onComplete }) {
         </div>
       )}
 
-      {/* Actions */}
       <div className="fu-actions">
         <button className="fu-skip" onClick={handleSkip}>
           Skip — no file
@@ -194,12 +214,10 @@ export default function FileUpload({ onComplete }) {
         <button
           className="fu-continue"
           onClick={handleContinue}
-          disabled={!uploaded && !!file}
         >
           {uploaded ? 'Continue →' : 'Skip & Continue →'}
         </button>
       </div>
-
     </div>
   )
 }

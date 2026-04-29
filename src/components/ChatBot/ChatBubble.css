@@ -310,3 +310,41 @@
   width: 32px; height: 1.5px;
   background: var(--border-strong);
 }
+
+/* Add to ChatBot.css */
+.preview-overlay-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--surface);
+  overflow-y: auto;
+  animation: previewIn 0.35s cubic-bezier(0.4,0,0.2,1) both;
+}
+
+@keyframes previewIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.preview-back-btn {
+  position: fixed;
+  top: 16px;
+  left: 20px;
+  z-index: 2001;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: var(--font);
+  backdrop-filter: blur(8px);
+  transition: all 0.15s;
+}
+
+.preview-back-btn:hover {
+  background: var(--white);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}

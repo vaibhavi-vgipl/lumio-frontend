@@ -12,7 +12,7 @@ const LOADING_STEPS = [
   "Ready to generate reports",
 ]
 
-export default function ChatBubble({ onClose }) {
+export default function ChatBubble({ onClose, onPreview }) {
   const [phase, setPhase]              = useState('loading')
   const [loadStep, setLoadStep]        = useState(0)
   const [completedSteps, setCompleted] = useState([])
@@ -23,6 +23,7 @@ export default function ChatBubble({ onClose }) {
   const [direction, setDirection]      = useState('forward')
   const [stepKey, setStepKey]          = useState(0)
   const timers = useRef([])
+  
 
   useEffect(() => {
     return () => timers.current.forEach(clearTimeout)
@@ -85,15 +86,14 @@ export default function ChatBubble({ onClose }) {
       setAnswers({})
     }
   }
+function handlePreview() {
+  const params = Object.fromEntries(
+    Object.entries({ ...answers, fileName }).filter(([, v]) => v)
+  )
+  localStorage.setItem('lumio_report_params', new URLSearchParams(params).toString())
+  onPreview(params)
+}
 
-  function handlePreview() {
-    const params = new URLSearchParams(
-      Object.fromEntries(
-        Object.entries({ ...answers, fileName }).filter(([, v]) => v)
-      )
-    ).toString()
-    window.open(`/report-preview?${params}`, '_blank')
-  }
 
   return (
     <div className="cb-wrapper">

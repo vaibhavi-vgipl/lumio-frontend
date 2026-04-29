@@ -449,19 +449,39 @@ function GeneratingLoader({ config, onDone }) {
 
 // ── Main report ───────────────────────────────────────
 
-export default function ReportPreview() {
-  const [phase,  setPhase]  = useState('generating') // generating | report
+export default function ReportPreview({ inlineConfig }) {
+  const [phase,  setPhase]  = useState('generating')
   const [config, setConfig] = useState(null)
   const [data,   setData]   = useState(null)
 
   useEffect(() => {
-    const params = Object.fromEntries(new URLSearchParams(window.location.search))
+    let params
+
+    if (inlineConfig) {
+      // came from inline — use directly
+      params = inlineConfig
+    } else {
+      // try URL params (browser new tab)
+      params = Object.fromEntries(
+        new URLSearchParams(window.location.search)
+      )
+      // fallback localStorage (Tauri)
+      if (!params.reportType) {
+        const stored = localStorage.getItem('lumio_report_params')
+        if (stored) {
+          params = Object.fromEntries(new URLSearchParams(stored))
+        }
+      }
+    }
+
     setConfig(params)
-    const reportData = mockReportData[params.reportType] || mockReportData['Profit & Loss']
+    const reportData =
+      mockReportData[params.reportType] || mockReportData['Profit & Loss']
     setData(reportData)
-  }, [])
+  }, [inlineConfig])
 
   if (!config || !data) return null
+
 
   if (phase === 'generating') {
     return (
