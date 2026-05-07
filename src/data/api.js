@@ -2,10 +2,18 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://samruddhiss-macbook-pro.local:8742'
 
-const DEV_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OWY5ZDFmNzJiYjZhNzVjNjNmMTRkZDEiLCJleHAiOjE3Nzc5ODM1MTUsImlhdCI6MTc3Nzk3OTkxNX0.LsKUkVKgiHWv8MnQ-hdSG7CsO2XE431N-5soqH4Nrp8'
+// dev credentials — replace with proper login screen later
+const DEV_EMAIL    = 'vaibhavi4@test.com'
+const DEV_PASSWORD = 'test1234'
+
+// ── Token management ──────────────────────────────────
 
 export function getToken() {
-  return localStorage.getItem('lumio_token') || DEV_TOKEN
+  return localStorage.getItem('lumio_token')
+}
+
+function setToken(token) {
+  localStorage.setItem('lumio_token', token)
 }
 
 export function isLoggedIn() {
@@ -14,6 +22,54 @@ export function isLoggedIn() {
 
 export function logout() {
   localStorage.removeItem('lumio_token')
+}
+
+// auto login — call on app start
+export async function ensureAuth() {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: DEV_EMAIL, password: DEV_PASSWORD })
+    })
+    if (!res.ok) throw new Error('Login failed')
+    const data = await res.json()
+    setToken(data.access_token)
+    return data.access_token
+  } catch {
+    return null
+  }
+}
+
+// smart fetch — auto refreshes token on 401
+async function apiFetch(url, options = {}) {
+  let token = getToken()
+
+  let res = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    }
+  })
+
+  // token expired — auto login and retry once
+  if (res.status === 401) {
+    token = await ensureAuth()
+    if (token) {
+      res = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...options.headers,
+        }
+      })
+    }
+  }
+
+  return res
 }
 
 // ── Auth ──────────────────────────────────────────────
@@ -26,7 +82,7 @@ export async function login(email, password) {
   })
   if (!res.ok) throw new Error('Login failed')
   const data = await res.json()
-  localStorage.setItem('lumio_token', data.access_token)
+  setToken(data.access_token)
   return data
 }
 
@@ -41,20 +97,14 @@ export async function register(name, email, password) {
 }
 
 export async function getMe() {
-  const res = await fetch(`${BASE_URL}/auth/me`, {
-    headers: { 'Authorization': `Bearer ${getToken()}` }
-  })
+  const res = await apiFetch(`${BASE_URL}/auth/me`)
   if (!res.ok) throw new Error('Not authenticated')
   return res.json()
 }
 
 export async function updateMe(updates) {
-  const res = await fetch(`${BASE_URL}/auth/me`, {
+  const res = await apiFetch(`${BASE_URL}/auth/me`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
     body: JSON.stringify(updates)
   })
   if (!res.ok) throw new Error('Update failed')
@@ -100,12 +150,8 @@ function buildDateRange(period) {
 // ── Report Generation ─────────────────────────────────
 
 export async function generateReport({ reportType, period, region, customPrompt, projectId }) {
-  const res = await fetch(`${BASE_URL}/api/generate-report`, {
+  const res = await apiFetch(`${BASE_URL}/api/generate-report`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
     body: JSON.stringify({
       report_type: mapReportType(reportType),
       nl_request:  buildNLRequest({ reportType, period, region, customPrompt }),
@@ -121,49 +167,37 @@ export async function generateReport({ reportType, period, region, customPrompt,
 // ── Export PDF ────────────────────────────────────────
 
 export async function exportPDFFromAPI(projectId) {
-  const res = await fetch(`${BASE_URL}/api/export-pdf`, {
+  const res = await apiFetch(`${BASE_URL}/api/export-pdf`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
     body: JSON.stringify({ project_id: projectId })
   })
   if (!res.ok) throw new Error('Export failed')
-  return res.json() // returns a string (PDF URL or base64)
+  return res.json()
 }
 
 // ── Projects ──────────────────────────────────────────
 
 export async function getProjects() {
-  const res = await fetch(`${BASE_URL}/api/projects`, {
-    headers: { 'Authorization': `Bearer ${getToken()}` }
-  })
+  const res = await apiFetch(`${BASE_URL}/api/projects`)
   if (!res.ok) throw new Error('Failed to fetch projects')
   return res.json()
 }
 
 export async function getProject(projectId) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}`, {
-    headers: { 'Authorization': `Bearer ${getToken()}` }
-  })
+  const res = await apiFetch(`${BASE_URL}/api/projects/${projectId}`)
   if (!res.ok) throw new Error('Failed to fetch project')
   return res.json()
 }
 
 export async function createProject({ name, reportType, period, region, customPrompt }) {
-  const res = await fetch(`${BASE_URL}/api/projects`, {
+  const res = await apiFetch(`${BASE_URL}/api/projects`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
     body: JSON.stringify({
       name,
-      report_type: mapReportType(reportType),
-      nl_request:  buildNLRequest({ reportType, period, region, customPrompt }),
-      branch_code: 'qcmm7MUzU0z5DJZQF5II',
-      date_range:  buildDateRange(period),
+      report_type:   mapReportType(reportType),
+      nl_request:    buildNLRequest({ reportType, period, region, customPrompt }),
+      branch_code:   'qcmm7MUzU0z5DJZQF5II',
+      date_range:    buildDateRange(period),
       report_config: {}
     })
   })
@@ -172,12 +206,8 @@ export async function createProject({ name, reportType, period, region, customPr
 }
 
 export async function updateProject(projectId, updates) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}`, {
+  const res = await apiFetch(`${BASE_URL}/api/projects/${projectId}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    },
     body: JSON.stringify(updates)
   })
   if (!res.ok) throw new Error('Failed to update project')
@@ -185,9 +215,8 @@ export async function updateProject(projectId, updates) {
 }
 
 export async function deleteProject(projectId) {
-  const res = await fetch(`${BASE_URL}/api/projects/${projectId}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${getToken()}` }
+  const res = await apiFetch(`${BASE_URL}/api/projects/${projectId}`, {
+    method: 'DELETE'
   })
   if (!res.ok) throw new Error('Failed to delete project')
   return res.json()
