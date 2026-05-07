@@ -1,5 +1,7 @@
 // src/components/Report/ReportPreview.jsx
 import { useEffect, useState } from 'react'
+import { generateReport, createProject, exportPDFFromAPI } from '../../data/api'
+import { downloadReportAsPDF } from '../../utils/exportPDF'
 import {
   BarChart, Bar,
   PieChart, Pie, Cell,
@@ -8,6 +10,7 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
 import { mockReportData } from '../../data/mockReportData'
+import Toast from '../UI/Toast'
 import './ReportPreview.css'
 
 const COLORS = ['#1A1A2E','#D4A843','#2A7A50','#8B2020','#4A6FA5','#9B6E2C']
@@ -172,8 +175,6 @@ const tooltipStyle = {
   boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
 }
 
-// ── Chart components ──────────────────────────────────
-
 function BarSection({ data, reportType }) {
   const keys = Object.keys(data.bar[0]).filter(k => k !== 'name')
   return (
@@ -187,8 +188,7 @@ function BarSection({ data, reportType }) {
           <Tooltip contentStyle={tooltipStyle} />
           <Legend wrapperStyle={{ fontSize:11, paddingTop:12 }} />
           {keys.map((k, i) => (
-            <Bar key={k} dataKey={k} fill={COLORS[i]}
-              radius={[4,4,0,0]} maxBarSize={48} />
+            <Bar key={k} dataKey={k} fill={COLORS[i]} radius={[4,4,0,0]} maxBarSize={48} />
           ))}
         </BarChart>
       </ResponsiveContainer>
@@ -278,8 +278,7 @@ function ComboSection({ data, reportType }) {
           <Tooltip contentStyle={tooltipStyle} />
           <Legend wrapperStyle={{ fontSize:11, paddingTop:12 }} />
           {keys.slice(0, 2).map((k, i) => (
-            <Bar key={k} dataKey={k} fill={COLORS[i]}
-              radius={[4,4,0,0]} maxBarSize={48} />
+            <Bar key={k} dataKey={k} fill={COLORS[i]} radius={[4,4,0,0]} maxBarSize={48} />
           ))}
           {keys[2] && (
             <Line type="monotone" dataKey={keys[2]}
@@ -303,8 +302,6 @@ function ChartSection({ chartType, reportType }) {
   return <BarSection data={data} reportType={reportType} />
 }
 
-// ── Loader ────────────────────────────────────────────
-
 function GeneratingLoader({ config, onDone }) {
   const [stepIndex,   setStepIndex]   = useState(0)
   const [completed,   setCompleted]   = useState([])
@@ -312,14 +309,11 @@ function GeneratingLoader({ config, onDone }) {
   const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
-    let elapsed  = 0
-    const total  = GENERATING_STEPS.reduce((s, x) => s + x.duration, 0)
+    let elapsed = 0
+    const total = GENERATING_STEPS.reduce((s, x) => s + x.duration, 0)
 
     GENERATING_STEPS.forEach((step, i) => {
-      // activate step
       setTimeout(() => setStepIndex(i), elapsed)
-
-      // complete step + update progress
       elapsed += step.duration
       const pct = Math.round(((i + 1) / GENERATING_STEPS.length) * 100)
       setTimeout(() => {
@@ -328,20 +322,15 @@ function GeneratingLoader({ config, onDone }) {
       }, elapsed)
     })
 
-    // show success then call onDone
     setTimeout(() => setShowSuccess(true), total + 100)
     setTimeout(() => onDone(),             total + 900)
   }, [])
 
   return (
     <div className="rp-gen-root">
-
-      {/* Animated background grid */}
       <div className="rp-gen-grid" />
-
       <div className="rp-gen-card">
 
-        {/* Orb */}
         <div className="rp-gen-orb-wrap">
           <div className="rp-gen-ring rp-gen-r1" />
           <div className="rp-gen-ring rp-gen-r2" />
@@ -367,7 +356,6 @@ function GeneratingLoader({ config, onDone }) {
           </div>
         </div>
 
-        {/* Title */}
         <div className="rp-gen-title">
           {showSuccess ? 'Report Ready' : 'Generating Report'}
         </div>
@@ -375,16 +363,11 @@ function GeneratingLoader({ config, onDone }) {
           {config.reportType} · {config.period} · {config.region}
         </div>
 
-        {/* Progress bar */}
         <div className="rp-gen-bar-wrap">
-          <div
-            className="rp-gen-bar-fill"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="rp-gen-bar-fill" style={{ width: `${progress}%` }} />
         </div>
         <div className="rp-gen-pct">{progress}%</div>
 
-        {/* Steps */}
         <div className="rp-gen-steps">
           {GENERATING_STEPS.map((step, i) => {
             const isDone   = completed.includes(i)
@@ -396,21 +379,16 @@ function GeneratingLoader({ config, onDone }) {
                 style={{
                   opacity:    i <= stepIndex ? 1 : 0.2,
                   transform:  i <= stepIndex ? 'translateX(0)' : 'translateX(-8px)',
-                  transition: `opacity 0.4s ease ${i * 0.04}s,
-                               transform 0.4s ease ${i * 0.04}s`,
-                  color: isDone   ? 'var(--text-muted)'
-                       : isActive ? 'var(--ink)'
-                       : 'var(--text-sub)',
+                  transition: `opacity 0.4s ease ${i * 0.04}s, transform 0.4s ease ${i * 0.04}s`,
+                  color: isDone ? 'var(--text-muted)' : isActive ? 'var(--ink)' : 'var(--text-sub)',
                   fontWeight: isActive ? 600 : 400,
                 }}
               >
                 <div
                   className="rp-gen-dot"
                   style={{
-                    borderColor: isDone || isActive
-                      ? 'var(--gold)' : 'var(--border-strong)',
-                    background: isDone || isActive
-                      ? 'var(--gold-light)' : 'var(--surface-2)',
+                    borderColor: isDone || isActive ? 'var(--gold)' : 'var(--border-strong)',
+                    background:  isDone || isActive ? 'var(--gold-light)' : 'var(--surface-2)',
                   }}
                 >
                   {isDone
@@ -419,9 +397,7 @@ function GeneratingLoader({ config, onDone }) {
                           stroke="#D4A843" strokeWidth="1.5"
                           strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                    : isActive
-                      ? <div className="rp-gen-pulse" />
-                      : null
+                    : isActive ? <div className="rp-gen-pulse" /> : null
                   }
                 </div>
                 <span>{step.text}</span>
@@ -430,7 +406,6 @@ function GeneratingLoader({ config, onDone }) {
           })}
         </div>
 
-        {/* Success message */}
         <div
           className="rp-gen-success"
           style={{
@@ -447,41 +422,128 @@ function GeneratingLoader({ config, onDone }) {
   )
 }
 
+// ── Transform API response ────────────────────────────
+
+function transformAPIData(apiData) {
+  const report = apiData.report
+  if (!report) return null
+
+  const kpis = []
+  if (report.report_sections) {
+    report.report_sections.forEach(section => {
+      section.metrics?.forEach(metric => {
+        kpis.push({
+          label:    metric.display_label,
+          value:    metric.value,
+          delta:    '',
+          positive: true,
+        })
+      })
+    })
+  }
+
+  const insight = report.insights?.map(i => i.reason).join(' ') || ''
+
+  const resolved = report.resolved_values || {}
+  const headers  = ['Metric', 'Value']
+  const rows     = Object.entries(resolved).map(([key, val]) => [
+    key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    val,
+  ])
+
+  return { kpis, insight, table: { headers, rows } }
+}
+
 // ── Main report ───────────────────────────────────────
 
 export default function ReportPreview({ inlineConfig }) {
-  const [phase,  setPhase]  = useState('generating')
-  const [config, setConfig] = useState(null)
-  const [data,   setData]   = useState(null)
+  const [phase,     setPhase]     = useState('generating')
+  const [config,    setConfig]    = useState(null)
+  const [data,      setData]      = useState(null)
+  const [exporting, setExporting] = useState(false)
+  const [toast,     setToast]     = useState(null)
 
   useEffect(() => {
     let params
 
     if (inlineConfig) {
-      // came from inline — use directly
       params = inlineConfig
     } else {
-      // try URL params (browser new tab)
-      params = Object.fromEntries(
-        new URLSearchParams(window.location.search)
-      )
-      // fallback localStorage (Tauri)
+      params = Object.fromEntries(new URLSearchParams(window.location.search))
       if (!params.reportType) {
         const stored = localStorage.getItem('lumio_report_params')
-        if (stored) {
-          params = Object.fromEntries(new URLSearchParams(stored))
-        }
+        if (stored) params = Object.fromEntries(new URLSearchParams(stored))
       }
     }
 
     setConfig(params)
-    const reportData =
-      mockReportData[params.reportType] || mockReportData['Profit & Loss']
-    setData(reportData)
+
+    // create project first then generate report
+    createProject({
+      name:         params.fileName || params.reportType || 'Report',
+      reportType:   params.reportType,
+      period:       params.period,
+      region:       params.region,
+      customPrompt: params.customPrompt,
+    })
+      .then(project => {
+        localStorage.setItem('lumio_project_id', project.id)
+        return generateReport({
+          reportType:   params.reportType,
+          period:       params.period,
+          region:       params.region,
+          customPrompt: params.customPrompt,
+          projectId:    project.id,
+        })
+      })
+      .then(apiData => {
+        const transformed = transformAPIData(apiData)
+        if (transformed && transformed.kpis.length > 0) {
+          setData(transformed)
+        } else {
+          setData(mockReportData[params.reportType] || mockReportData['Profit & Loss'])
+        }
+      })
+      .catch(() => {
+        setData(mockReportData[params.reportType] || mockReportData['Profit & Loss'])
+      })
+
   }, [inlineConfig])
 
-  if (!config || !data) return null
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const projectId = localStorage.getItem('lumio_project_id')
 
+      if (projectId) {
+        try {
+          const result = await exportPDFFromAPI(projectId)
+          if (typeof result === 'string' && result.startsWith('http')) {
+            window.open(result, '_blank')
+            setToast({ message: 'PDF opened successfully', type: 'success' })
+            return
+          }
+        } catch {
+          // fallback to local PDF
+        }
+      }
+
+      await downloadReportAsPDF(
+        'rp-report-body',
+        config.fileName || config.reportType || 'Report'
+      )
+      setToast({
+        message: `"${config.fileName || config.reportType || 'Report'}.pdf" downloaded successfully`,
+        type: 'success'
+      })
+    } catch {
+      setToast({ message: 'Export failed. Please try again.', type: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  if (!config || !data) return null
 
   if (phase === 'generating') {
     return (
@@ -495,7 +557,6 @@ export default function ReportPreview({ inlineConfig }) {
   return (
     <div className="rp-root">
 
-      {/* Header */}
       <div className="rp-header">
         <div className="rp-header-left">
           <div className="rp-logo-icon">
@@ -517,20 +578,24 @@ export default function ReportPreview({ inlineConfig }) {
         </div>
         <div className="rp-header-right">
           <div className="rp-meta-chips">
-            {config.period     && <span className="rp-chip">{config.period}</span>}
-            {config.region     && <span className="rp-chip">{config.region}</span>}
-            {config.chartType  && config.chartType !== 'No Charts' &&
+            {config.period    && <span className="rp-chip">{config.period}</span>}
+            {config.region    && <span className="rp-chip">{config.region}</span>}
+            {config.chartType && config.chartType !== 'No Charts' &&
               <span className="rp-chip">{config.chartType}</span>}
             {config.aiInsights === 'Yes' &&
               <span className="rp-chip ai">✦ AI Insights</span>}
           </div>
-          <button className="rp-export-btn" onClick={() => window.print()}>
-            Export PDF
+          <button
+            className="rp-export-btn"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? 'Exporting...' : 'Export PDF'}
           </button>
         </div>
       </div>
 
-      <div className="rp-body">
+      <div className="rp-body" id="rp-report-body">
 
         <div className="rp-section-label">Key Metrics</div>
         <div className="rp-kpi-grid">
@@ -539,14 +604,16 @@ export default function ReportPreview({ inlineConfig }) {
               style={{ animationDelay: `${i * 0.08}s` }}>
               <div className="rp-kpi-label">{kpi.label}</div>
               <div className="rp-kpi-value">{kpi.value}</div>
-              <div className={`rp-kpi-delta ${kpi.positive ? 'pos' : 'neg'}`}>
-                {kpi.positive ? '▲' : '▼'} {kpi.delta}
-              </div>
+              {kpi.delta && (
+                <div className={`rp-kpi-delta ${kpi.positive ? 'pos' : 'neg'}`}>
+                  {kpi.positive ? '▲' : '▼'} {kpi.delta}
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        {config.aiInsights === 'Yes' && (
+        {config.aiInsights === 'Yes' && data.insight && (
           <>
             <div className="rp-section-label">AI Insight</div>
             <div className="rp-insight">
@@ -600,15 +667,7 @@ export default function ReportPreview({ inlineConfig }) {
                   <tr key={i} style={{ animationDelay: `${i * 0.04}s` }}>
                     <td className="rp-td-num">{i + 1}</td>
                     {row.map((cell, j) => (
-                      <td key={j}>
-                        {j === row.length - 1
-                          ? <span className={`rp-status-pill ${
-                              cell.startsWith('+') ? 'pos' :
-                              cell.startsWith('-') ? 'neg' : 'neutral'
-                            }`}>{cell}</span>
-                          : cell
-                        }
-                      </td>
+                      <td key={j}>{cell}</td>
                     ))}
                   </tr>
                 ))}
@@ -647,6 +706,15 @@ export default function ReportPreview({ inlineConfig }) {
         </div>
 
       </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
     </div>
   )
 }
