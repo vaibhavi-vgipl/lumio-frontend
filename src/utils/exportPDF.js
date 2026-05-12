@@ -6,46 +6,48 @@ export async function downloadReportAsPDF(elementId, fileName) {
   if (!element) return
 
   try {
+    // wait for charts to fully render
+    await new Promise(resolve => setTimeout(resolve, 2500))
+
     const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
+      scale:           1.5,
+      useCORS:         true,
+      logging:         false,
       backgroundColor: '#F4F3EF',
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
+      width:           element.scrollWidth,
+      height:          element.scrollHeight,
+      windowWidth:     element.scrollWidth,
+      windowHeight:    element.scrollHeight,
+      scrollX:         0,
+      scrollY:         -window.scrollY,
+      allowTaint:      true,
+      foreignObjectRendering: false,
+      onclone: (clonedDoc) => {
+        const clonedEl = clonedDoc.getElementById(elementId)
+        if (clonedEl) {
+          clonedEl.style.height   = 'auto'
+          clonedEl.style.overflow = 'visible'
+        }
+      }
     })
 
-    const imgData   = canvas.toDataURL('image/png')
-    const pdf       = new jsPDF('p', 'mm', 'a4')
-    const pdfWidth  = pdf.internal.pageSize.getWidth()
-    const pdfHeight = pdf.internal.pageSize.getHeight()
-    const imgWidth  = canvas.width
-    const imgHeight = canvas.height
-    const ratio     = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight)
-    const imgX      = (pdfWidth - imgWidth * ratio) / 2
+    const imgData     = canvas.toDataURL('image/png')
+    const pdf         = new jsPDF('p', 'mm', 'a4')
+    const pdfWidth    = pdf.internal.pageSize.getWidth()
+    const pdfHeight   = pdf.internal.pageSize.getHeight()
+    const ratio       = pdfWidth / canvas.width
+    const totalHeight = canvas.height * ratio
 
-    const totalHeight = imgHeight * ratio
-    let heightLeft    = totalHeight
-    let position      = 0
+    let heightLeft = totalHeight
+    let position   = 0
 
-    pdf.addImage(
-      imgData, 'PNG',
-      imgX, position,
-      imgWidth  * ratio,
-      imgHeight * ratio
-    )
-
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalHeight)
     heightLeft -= pdfHeight
 
     while (heightLeft > 0) {
-      position = heightLeft - totalHeight
+      position   = heightLeft - totalHeight
       pdf.addPage()
-      pdf.addImage(
-        imgData, 'PNG',
-        imgX, position,
-        imgWidth  * ratio,
-        imgHeight * ratio
-      )
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalHeight)
       heightLeft -= pdfHeight
     }
 
@@ -56,5 +58,6 @@ export async function downloadReportAsPDF(elementId, fileName) {
 
   } catch (err) {
     console.error('PDF export failed:', err)
+    throw err
   }
 }

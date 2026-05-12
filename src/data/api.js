@@ -115,13 +115,13 @@ export async function updateMe(updates) {
 
 function mapReportType(reportType) {
   const map = {
-    'Profit & Loss':  'profit_loss',
+    'Profit & Loss':  'loan_disbursement',
     'NPA Report':     'npa_analysis',
     'Loan Report':    'loan_disbursement',
     'Credit Report':  'credit_risk',
-    'Deposit Report': 'deposit_analysis',
+    'Deposit Report': 'loan_disbursement',
   }
-  return map[reportType] || 'profit_loss'
+  return map[reportType] || 'loan_disbursement'
 }
 
 // ── Helpers ───────────────────────────────────────────
@@ -166,10 +166,18 @@ export async function generateReport({ reportType, period, region, customPrompt,
 
 // ── Export PDF ────────────────────────────────────────
 
-export async function exportPDFFromAPI(projectId) {
+export async function exportPDFFromAPI(reportType, reportData) {
   const res = await apiFetch(`${BASE_URL}/api/export-pdf`, {
     method: 'POST',
-    body: JSON.stringify({ project_id: projectId })
+    body: JSON.stringify({
+      report_type: reportType,
+      report_data: {
+        report_sections:  reportData.report_sections  || [],
+        insights:         reportData.insights         || [],
+        chart_suggestions:reportData.chart_suggestions|| [],
+        resolved_values:  reportData.resolved_values  || {}
+      }
+    })
   })
   if (!res.ok) throw new Error('Export failed')
   return res.json()

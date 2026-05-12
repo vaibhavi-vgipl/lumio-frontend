@@ -330,7 +330,6 @@ function GeneratingLoader({ config, onDone }) {
     <div className="rp-gen-root">
       <div className="rp-gen-grid" />
       <div className="rp-gen-card">
-
         <div className="rp-gen-orb-wrap">
           <div className="rp-gen-ring rp-gen-r1" />
           <div className="rp-gen-ring rp-gen-r2" />
@@ -373,9 +372,7 @@ function GeneratingLoader({ config, onDone }) {
             const isDone   = completed.includes(i)
             const isActive = stepIndex === i && !isDone
             return (
-              <div
-                key={i}
-                className="rp-gen-step"
+              <div key={i} className="rp-gen-step"
                 style={{
                   opacity:    i <= stepIndex ? 1 : 0.2,
                   transform:  i <= stepIndex ? 'translateX(0)' : 'translateX(-8px)',
@@ -384,8 +381,7 @@ function GeneratingLoader({ config, onDone }) {
                   fontWeight: isActive ? 600 : 400,
                 }}
               >
-                <div
-                  className="rp-gen-dot"
+                <div className="rp-gen-dot"
                   style={{
                     borderColor: isDone || isActive ? 'var(--gold)' : 'var(--border-strong)',
                     background:  isDone || isActive ? 'var(--gold-light)' : 'var(--surface-2)',
@@ -406,8 +402,7 @@ function GeneratingLoader({ config, onDone }) {
           })}
         </div>
 
-        <div
-          className="rp-gen-success"
+        <div className="rp-gen-success"
           style={{
             opacity:    showSuccess ? 1 : 0,
             transform:  showSuccess ? 'translateY(0)' : 'translateY(8px)',
@@ -416,7 +411,6 @@ function GeneratingLoader({ config, onDone }) {
         >
           ✦ Report generated successfully
         </div>
-
       </div>
     </div>
   )
@@ -457,11 +451,13 @@ function transformAPIData(apiData) {
 // ── Main report ───────────────────────────────────────
 
 export default function ReportPreview({ inlineConfig }) {
-  const [phase,     setPhase]     = useState('generating')
-  const [config,    setConfig]    = useState(null)
-  const [data,      setData]      = useState(null)
-  const [exporting, setExporting] = useState(false)
-  const [toast,     setToast]     = useState(null)
+  const [phase,         setPhase]         = useState('generating')
+  const [config,        setConfig]        = useState(null)
+  const [data,          setData]          = useState(null)
+  const [exporting,     setExporting]     = useState(false)
+  const [toast,         setToast]         = useState(null)
+  const [rawReport,     setRawReport]     = useState(null)
+  const [rawReportType, setRawReportType] = useState(null)
 
   useEffect(() => {
     let params
@@ -478,7 +474,6 @@ export default function ReportPreview({ inlineConfig }) {
 
     setConfig(params)
 
-    // create project first then generate report
     createProject({
       name:         params.fileName || params.reportType || 'Report',
       reportType:   params.reportType,
@@ -497,6 +492,10 @@ export default function ReportPreview({ inlineConfig }) {
         })
       })
       .then(apiData => {
+        // store raw report and type for export
+        setRawReport(apiData.report || null)
+        setRawReportType(apiData.report_type || null)
+
         const transformed = transformAPIData(apiData)
         if (transformed && transformed.kpis.length > 0) {
           setData(transformed)
@@ -513,16 +512,14 @@ export default function ReportPreview({ inlineConfig }) {
   async function handleExport() {
     setExporting(true)
     try {
-      const projectId = localStorage.getItem('lumio_project_id')
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      if (projectId) {
+      if (rawReport && rawReportType) {
         try {
-          const result = await exportPDFFromAPI(projectId)
-          if (typeof result === 'string' && result.startsWith('http')) {
-            window.open(result, '_blank')
-            setToast({ message: 'PDF opened successfully', type: 'success' })
-            return
-          }
+          const result = await exportPDFFromAPI(rawReportType, rawReport)
+          console.log('Export success:', result)
+          setToast({ message: 'PDF exported successfully', type: 'success' })
+          return
         } catch {
           // fallback to local PDF
         }
