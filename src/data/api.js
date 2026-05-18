@@ -172,10 +172,10 @@ export async function exportPDFFromAPI(reportType, reportData) {
     body: JSON.stringify({
       report_type: reportType,
       report_data: {
-        report_sections:  reportData.report_sections  || [],
-        insights:         reportData.insights         || [],
-        chart_suggestions:reportData.chart_suggestions|| [],
-        resolved_values:  reportData.resolved_values  || {}
+        report_sections:   reportData.report_sections   || [],
+        insights:          reportData.insights          || [],
+        chart_suggestions: reportData.chart_suggestions || [],
+        resolved_values:   reportData.resolved_values   || {}
       }
     })
   })

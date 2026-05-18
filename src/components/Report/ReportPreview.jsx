@@ -451,7 +451,6 @@ function transformAPIData(apiData) {
 // ── Main report ───────────────────────────────────────
 
 export default function ReportPreview({ inlineConfig }) {
-  const [phase,         setPhase]         = useState('generating')
   const [config,        setConfig]        = useState(null)
   const [data,          setData]          = useState(null)
   const [exporting,     setExporting]     = useState(false)
@@ -517,14 +516,25 @@ export default function ReportPreview({ inlineConfig }) {
       if (rawReport && rawReportType) {
         try {
           const result = await exportPDFFromAPI(rawReportType, rawReport)
-          console.log('Export success:', result)
-          setToast({ message: 'PDF exported successfully', type: 'success' })
+
+          // Sam's API returns JSON — download as JSON file
+          const jsonString = JSON.stringify(result, null, 2)
+          const blob = new Blob([jsonString], { type: 'application/json' })
+          const url  = window.URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href  = url
+          link.download = `${rawReportType}_${new Date().toISOString().split('T')[0]}.json`
+          link.click()
+          window.URL.revokeObjectURL(url)
+
+          setToast({ message: 'Report exported successfully', type: 'success' })
           return
         } catch {
           // fallback to local PDF
         }
       }
 
+      // local PDF fallback
       await downloadReportAsPDF(
         'rp-report-body',
         config.fileName || config.reportType || 'Report'
@@ -541,15 +551,6 @@ export default function ReportPreview({ inlineConfig }) {
   }
 
   if (!config || !data) return null
-
-  if (phase === 'generating') {
-    return (
-      <GeneratingLoader
-        config={config}
-        onDone={() => setPhase('report')}
-      />
-    )
-  }
 
   return (
     <div className="rp-root">
